@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>From Unlearning to UNBRANDING — Project Page</title>
+    <meta name="description" content="From Unlearning to UNBRANDING: a benchmark and task for trademark‑safe text‑to‑image generation. Project page with title, authors, abstract, and paper PDF." />
+    <meta property="og:title" content="From Unlearning to UNBRANDING" />
+    <meta property="og:description" content="Benchmark and task for trademark‑safe text‑to‑image generation, with VLM‑QA metric and figures." />
+    <meta property="og:image" content="images/teaser_ub_v4.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href="styles.css" as="style" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <div class="progress" aria-hidden="true"><div class="progress__bar"></div></div>
+    <header class="page-header">
+      <div class="container">
+        <h1 class="title">From Unlearning to UNBRANDING: A Benchmark for Trademark‑Safe Text‑to‑Image Generation</h1>
+        <p class="authors">
+          Dawid Malarz<sup>1,2</sup>, Artur Kasymov<sup>1,3</sup>, Filip Manjak<sup>1</sup>,
+          Maciej Zięba<sup>4,5</sup>, Przemysław Spurek<sup>1,2</sup>
+        </p>
+        <p class="affiliations">
+          <span><sup>1</sup> Jagiellonian University, Faculty of Mathematics and Computer Science</span>
+          <span><sup>2</sup> IDEAS Research Institute, Warsaw, Poland</span>
+          <span><sup>3</sup> Jagiellonian University, Doctoral School of Exact and Natural Sciences, Krakow, Poland</span>
+          <span><sup>4</sup> Wroclaw University of Science and Technology</span>
+          <span><sup>5</sup> Tooploox, Wroclaw, Poland</span>
+        </p>
+        <p class="links">
+          <a class="btn" href="pdfs/unbranding.pdf" download>Download PDF</a>
+          <a class="btn btn-ghost" href="pdfs/unbranding.pdf#page=1&zoom=page-width">Open PDF</a>
+          <a class="btn btn-ghost" href="#" aria-disabled="true" title="GitHub repository (coming soon)">GitHub</a>
+        </p>
+      </div>
+    </header>
+
+    <div class="page-layout container">
+      <nav class="toc" aria-label="On this page">
+        <h3>On this page</h3>
+        <ol>
+          <li><a href="#abstract">Abstract</a></li>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#figures">Figures</a></li>
+          <li><a href="#reproduce">Reproduce</a></li>
+          <li><a href="#cite">Cite</a></li>
+        </ol>
+      </nav>
+      <main class="content" id="content">
+      <section id="abstract" class="section">
+        <h2>Abstract</h2>
+        <p>
+          The rapid progress of text‑to‑image diffusion models raises significant concerns regarding the unauthorized reproduction of trademarked content. While prior work targets general concepts (e.g., styles, celebrities), it fails to address specific brand identifiers. Crucially, we note that brand recognition is multi‑dimensional, extending beyond explicit logos to encompass distinctive structural features (e.g., a car’s front grille). To tackle this, we introduce <b>unbranding</b>, a novel task for the fine‑grained removal of both trademarks and subtle structural brand features, while preserving semantic coherence. To facilitate research, we construct a comprehensive benchmark dataset. Recognizing that existing brand detectors are limited to logos and fail to capture abstract trade dress (e.g., the shape of a Coca‑Cola bottle), we introduce a novel evaluation metric based on Vision Language Models (VLMs). This VLM‑based metric uses a question‑answering framework to probe images for both explicit logos and implicit, holistic brand characteristics. Furthermore, we observe that as model fidelity increases, with newer systems (SDXL, FLUX) synthesizing brand identifiers more readily than older models (Stable Diffusion), the urgency of the unbranding challenge is starkly highlighted. Our results, validated by our VLM metric, confirm unbranding is a distinct, practically relevant problem requiring specialized techniques.
+        </p>
+      </section>
+
+      <section id="overview" class="section reveal">
+        <h2>Overview</h2>
+        <p>
+          New text‑to‑image models can faithfully reproduce trademarks. Unbranding poses a targeted goal: suppress both explicit logos and implicit trade‑dress while preserving the underlying object and scene coherence. To measure progress, we apply a VLM‑QA probe that asks focused questions about logos and structural brand signals, providing coverage beyond classic logo detectors.
+        </p>
+      </section>
+
+      
+
+      <section id="figures" class="section reveal">
+        <h2>Unbranding Across Contexts</h2>
+        <figure class="teaser">
+          <img src="images/teaser_ub_v4.png" alt="Unbranding illustration on Coca‑Cola across multiple contexts" loading="lazy" decoding="async" onerror="this.replaceWith(document.getElementById('teaser-fallback').content.cloneNode(true));">
+          <template id="teaser-fallback"><figcaption class="placeholder">Add images/teaser_ub_v4.png to display the figure.</figcaption></template>
+          <figcaption class="figure-caption">Unbranding illustrated with the Coca‑Cola brand. Identifiers appear across varied settings—clothing, beverages, vehicles—so brand‑safe generation must alter every branded region and address more than logo removal. Distinctive trade‑dress cues, such as the bottle’s silhouette, also need to be suppressed.</figcaption>
+        </figure>
+      </section>
+
+      <section id="figure-2" class="section reveal">
+        <h2>Brand Cues: Logos and Trade Dress</h2>
+        <figure class="teaser">
+        <div class="img-grid img-grid--square img-grid--thumbs">
+          <div class="img-box"><img src="images/gemini/c_prompt_1.jpg" alt="Coca‑Cola example 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/c_prompt_2.jpg" alt="Coca‑Cola example 2" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/m3_prompt_1.jpg" alt="McDonald’s example 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/m3_prompt_2.jpg" alt="McDonald’s example 2" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/b1_prompt_1.jpg" alt="BMW example 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/b1_prompt_2.jpg" alt="BMW example 2" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/n_prompt_1.jpg" alt="Nutella example 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/n_prompt_2.jpg" alt="Nutella example 2" loading="lazy" decoding="async"></div>
+        </div>
+        <figcaption class="figure-caption">Brand recognition is driven by more than logos. Distinctive shapes—such as BMW’s kidney grille or the Coca‑Cola bottle—also signal identity. Effective unbranding must suppress both explicit marks and these structural signatures. Examples were manually assembled with Gemini to illustrate desired behavior and the risk of partial removal.</figcaption>
+        </figure>
+      </section>
+
+      <section id="figure-3" class="section reveal">
+        <h2>Brand‑Safety Policy Tensions</h2>
+        <figure class="teaser">
+        <div class="img-grid img-grid--square img-grid--thumbs">
+          <div class="img-box"><img src="images/gemini/c_prompt_4.jpg" alt="Coca‑Cola policy‑sensitive context" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/p_prompt_1.jpg" alt="Pepsi policy‑sensitive context" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/t4_prompt_1.jpg" alt="Tesla policy‑sensitive context 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/t3_prompt_1.jpg" alt="Tesla policy‑sensitive context 2" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/m1_prompt_1.jpg" alt="McDonald’s policy‑sensitive context" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/m_prompt_1.jpg" alt="McDonald’s alternative context" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/a1_prompt_1.jpg" alt="Apple device in restricted portrayal 1" loading="lazy" decoding="async"></div>
+          <div class="img-box"><img src="images/gemini/a2_prompt_1.jpg" alt="Apple device in restricted portrayal 2" loading="lazy" decoding="async"></div>
+        </div>
+        <figcaption class="figure-caption">Policy tension: brands impose strict portrayal rules, yet text‑to‑image systems readily generate branded scenes in disallowed contexts—e.g., unhealthy associations for Coca‑Cola, damaged Tesla depictions, or hackers using Apple devices. This underscores the need for dedicated unbranding techniques. Visuals composed with Gemini.</figcaption>
+        </figure>
+      </section>
+
+      <section id="figure-4" class="section reveal">
+        <h2>Fidelity vs. Removal Trade‑off</h2>
+        <figure class="teaser">
+          <img src="images/fig4.png" alt="Trade‑off between baseline fidelity and ESD brand removal" loading="lazy" decoding="async" />
+          <figcaption class="figure-caption">Trade‑off between methods. The baseline preserves visual structure and style but consistently fails to remove brand identifiers. ESD succeeds at removal, yet substantially alters semantics and degrades object fidelity. Effective unbranding must achieve both brand suppression and high visual coherence.</figcaption>
+        </figure>
+      </section>
+
+      <section id="highlights" class="section">
+        <h2>Highlights</h2>
+        <ul class="bullets">
+          <li><b>Task</b>: Fine‑grained removal of brand identifiers while preserving object fidelity.</li>
+          <li><b>Benchmark</b>: Dataset spanning explicit logos and trade‑dress cues.</li>
+          <li><b>Metric</b>: VLM‑based QA probing explicit and implicit brand signals.</li>
+          <li><b>Motivation</b>: Newer models (SDXL, FLUX) reproduce brands more readily than older ones.</li>
+        </ul>
+      </section>
+
+      
+
+      <section id="reproduce" class="section reveal">
+        <h2>Reproducibility</h2>
+        <ul class="bullets">
+          <li>Environment: pin model versions; fix seeds for sampling; document prompts.</li>
+          <li>Evaluation: run VLM‑QA script with provided templates; report controls.</li>
+          <li>Artifacts: configs and sample prompts for quick verification.</li>
+        </ul>
+      </section>
+
+      
+
+      <section id="cite" class="section reveal">
+        <h2>Cite</h2>
+        <div class="codebox">
+          <button class="btn btn-ghost btn-copy" data-copy="#bibtex">Copy</button>
+          <pre id="bibtex">% Placeholder — not yet published
+</pre>
+        </div>
+      </section>
+      </main>
+    </div>
+
+    <footer class="page-footer">
+      <div class="container">
+        <small>© 2025 The Authors</small>
+      </div>
+    </footer>
+    <script src="story.js" defer></script>
+  </body>
+  </html>

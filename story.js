@@ -23,14 +23,14 @@
   updateProgress();
 
   // TOC active link
-  const tocAnchors = Array.from(document.querySelectorAll('.toc a'));
+  const tocAnchors = Array.from(document.querySelectorAll('.toc a, .page-nav a'));
   const tocLinks = new Map(tocAnchors.map(a => [a.getAttribute('href').slice(1), a]));
   const sections = tocAnchors
     .map(a => a.getAttribute('href').slice(1))
     .map(id => document.getElementById(id))
     .filter(Boolean);
   const activate = (id) => {
-    document.querySelectorAll('.toc a.active').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.toc a.active, .page-nav a.active').forEach(el => el.classList.remove('active'));
     const link = tocLinks.get(id);
     if (link) link.classList.add('active');
   };

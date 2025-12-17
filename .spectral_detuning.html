@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Recovering the Pre-Fine-Tuning Weights of Generative Models - Eliahu Horwitz, Jonathan Kahana, Yedid Hoshen">
+  <meta name="description" content="We uncover a vulnerability in LoRA fine-tuned models wherein an attacker is able to undo the fine-tuning process and recover the weights of the original pre-trained model.">
+  <meta name="keywords" content="LLMs, Model Alignment, Stable Diffusion, Pre-Fine-Tuning, Spectral DeTuning, Mistral, LLaMA, jailbreaking, safety training, fine-tuning">
+  <meta name="author" content="Eliahu Horwitz, Jonathan Kahana, Yedid Hoshen">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Hebrew University of Jerusalem">
+  <meta property="og:title" content="Recovering the Pre-Fine-Tuning Weights of Generative Models">
+  <meta property="og:description" content="We uncover a vulnerability in LoRA fine-tuned models wherein an attacker is able to undo the fine-tuning process and recover the weights of the original pre-trained model.">
+  <meta property="og:url" content="https://horwitz.ai/spectral_detuning">
+  <meta property="og:image" content="https://horwitz.ai/spectral_detuning/static/images/og_banner.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Spectral DeTuning - Recovering Pre-Fine-Tuning Weights">
+  <meta property="article:published_time" content="2024-01-01T00:00:00.000Z">
+  <meta property="article:author" content="Eliahu Horwitz">
+  <meta property="article:section" content="Research">
+  <meta property="article:tag" content="Spectral DeTuning">
+  <meta property="article:tag" content="Model Security">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@eliahu_horwitz">
+  <meta name="twitter:creator" content="@eliahu_horwitz">
+  <meta name="twitter:title" content="Recovering the Pre-Fine-Tuning Weights of Generative Models">
+  <meta name="twitter:description" content="We uncover a vulnerability in LoRA fine-tuned models wherein an attacker is able to undo the fine-tuning process and recover the weights of the original pre-trained model.">
+  <meta name="twitter:image" content="https://horwitz.ai/spectral_detuning/static/images/twitter_banner.png">
+  <meta name="twitter:image:alt" content="Spectral DeTuning - Recovering Pre-Fine-Tuning Weights">
+
+  <!-- Academic/Research Specific -->
+  <meta name="citation_title" content="Recovering the Pre-Fine-Tuning Weights of Generative Models">
+  <meta name="citation_author" content="Horwitz, Eliahu">
+  <meta name="citation_author" content="Kahana, Jonathan">
+  <meta name="citation_author" content="Hoshen, Yedid">
+  <meta name="citation_publication_date" content="2024">
+  <meta name="citation_journal_title" content="International Conference on Machine Learning">
+  <meta name="citation_pdf_url" content="https://arxiv.org/pdf/2402.10208.pdf">
+  
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://ajax.googleapis.com">
+  <link rel="preconnect" href="https://documentcloud.adobe.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://polyfill.io">
+
+  <link rel="canonical" href="https://horwitz.ai/spectral_detuning">
+
+  <title>Recovering the Pre-Fine-Tuning Weights of Generative Models - Eliahu Horwitz, Jonathan Kahana, Yedid Hoshen | Academic Research</title>
+  
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/x-icon" href="/spectral_detuning/static/images/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/spectral_detuning/static/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/spectral_detuning/static/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/spectral_detuning/static/images/favicon-16x16.png">
+  <link rel="manifest" href="/spectral_detuning/static/images/site.webmanifest">
+  
+  <!-- Critical CSS - Load synchronously -->
+  <link rel="stylesheet" href="/spectral_detuning/static/css/bulma.min.css">
+  <link rel="stylesheet" href="/spectral_detuning/static/css/index.css">
+  
+  <!-- Non-critical CSS - Load asynchronously -->
+  <link rel="preload" href="/spectral_detuning/static/css/bulma-carousel.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="/spectral_detuning/static/css/bulma-slider.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="/spectral_detuning/static/css/fontawesome.all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  
+  <!-- Fallback for browsers that don't support preload -->
+  <noscript>
+    <link rel="stylesheet" href="/spectral_detuning/static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="/spectral_detuning/static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="/spectral_detuning/static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  </noscript>
+  
+  <!-- Fonts - Optimized loading -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Defer non-critical JavaScript -->
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="/spectral_detuning/static/js/fontawesome.all.min.js"></script>
+  <script defer src="/spectral_detuning/static/js/bulma-carousel.min.js"></script>
+  <script defer src="/spectral_detuning/static/js/bulma-slider.min.js"></script>
+  <script defer src="/spectral_detuning/static/js/index.js"></script>
+  <script defer src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script defer id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <!-- Structured Data for Academic Papers -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ScholarlyArticle",
+    "headline": "Recovering the Pre-Fine-Tuning Weights of Generative Models",
+    "description": "We uncover a vulnerability in LoRA fine-tuned models wherein an attacker is able to undo the fine-tuning process and recover the weights of the original pre-trained model.",
+    "author": [
+      {
+        "@type": "Person",
+        "name": "Eliahu Horwitz",
+        "affiliation": {
+          "@type": "Organization",
+          "name": "Hebrew University of Jerusalem"
+        }
+      },
+      {
+        "@type": "Person",
+        "name": "Jonathan Kahana",
+        "affiliation": {
+          "@type": "Organization",
+          "name": "Hebrew University of Jerusalem"
+        }
+      },
+      {
+        "@type": "Person",
+        "name": "Yedid Hoshen",
+        "affiliation": {
+          "@type": "Organization",
+          "name": "Hebrew University of Jerusalem"
+        }
+      }
+    ],
+    "datePublished": "2024-01-01",
+    "publisher": {
+      "@type": "Organization",
+      "name": "ICML"
+    },
+    "url": "https://horwitz.ai/spectral_detuning",
+    "image": "https://horwitz.ai/spectral_detuning/static/images/og_banner.png",
+    "keywords": ["Spectral DeTuning", "Model Security", "LoRA", "Fine-tuning", "ICML"],
+    "abstract": "The dominant paradigm in generative modeling consists of two steps: i) pre-training on a large-scale but unsafe dataset, ii) aligning the pre-trained model with human values via fine-tuning. This practice is considered safe, as no current method can recover the unsafe, pre-fine-tuning model weights.",
+    "citation": "@inproceedings{horwitz2024recovering, title={Recovering the Pre-Fine-Tuning Weights of Generative Models}, author={Horwitz, Eliahu and Kahana, Jonathan and Hoshen, Yedid}, booktitle={International Conference on Machine Learning}, pages={18882--18904}, year={2024}, organization={PMLR}}",
+    "isAccessibleForFree": true,
+    "license": "https://creativecommons.org/licenses/by/4.0/",
+    "mainEntity": {
+      "@type": "WebPage",
+      "@id": "https://horwitz.ai/spectral_detuning"
+    },
+    "about": [
+      {
+        "@type": "Thing",
+        "name": "Spectral DeTuning"
+      },
+      {
+        "@type": "Thing", 
+        "name": "Model Security"
+      }
+    ]
+  }
+  </script>
+  
+  <!-- Website/Organization Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Hebrew University of Jerusalem",
+    "url": "https://www.huji.ac.il",
+    "logo": "https://horwitz.ai/spectral_detuning/static/images/favicon.ico",
+    "sameAs": [
+      "https://twitter.com/eliahu_horwitz",
+      "https://github.com/eliahuhorwitz"
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <!-- More Works Dropdown -->
+  <div class="more-works-container">
+    <button class="more-works-btn" onclick="toggleMoreWorks()" title="View More Works from Our Lab">
+      <i class="fas fa-flask"></i>
+      More Works
+      <i class="fas fa-chevron-down dropdown-arrow"></i>
+    </button>
+    <div class="more-works-dropdown" id="moreWorksDropdown">
+      <div class="dropdown-header">
+        <h4>More Works from Our Lab</h4>
+        <button class="close-btn" onclick="toggleMoreWorks()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="works-list">
+        <a href="https://horwitz.ai/model-atlas" class="work-item" target="_blank">
+          <div class="work-info">
+            <h5>We Should Chart an Atlas of All the World's Models</h5>
+          </div>
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        <a href="https://horwitz.ai/mother" class="work-item" target="_blank">
+          <div class="work-info">
+            <h5>Unsupervised Model Tree Heritage Recovery</h5>
+          </div>
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        <a href="https://horwitz.ai/probex" class="work-item" target="_blank">
+          <div class="work-info">
+            <h5>Learning on Model Weights using Tree Experts</h5>
+          </div>
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        <a href="https://vision.huji.ac.il/probegen/" class="work-item" target="_blank">
+          <div class="work-info">
+            <h5>Deep Linear Probe Generators for Weight Space Learning</h5>
+          </div>
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+        <a href="https://jonkahana.github.io/probelog/" class="work-item" target="_blank">
+          <div class="work-info">
+            <h5>Can this Model Also Recognize Dogs? Zero-Shot Model Search from Weights</h5>
+          </div>
+          <i class="fas fa-external-link-alt"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <main id="main-content">
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Recovering the Pre-Fine-Tuning Weights of Generative Models</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="https://horwitz.ai/" target="_blank">Eliahu Horwitz</a>,</span>
+              <span class="author-block">
+                <a href="https://pages.cs.huji.ac.il/jonkahana/" target="_blank">Jonathan Kahana</a>,</span>
+              <span class="author-block">
+                <a href="https://www.cs.huji.ac.il/w~ydidh/" target="_blank">Yedid Hoshen</a>
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">The Hebrew University of Jerusalem<br>ICML 2024<br></span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+               <!-- Arxiv PDF link -->
+               <span class="link-block">
+                <a href="https://arxiv.org/pdf/2402.10208.pdf" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+
+              <!-- Github link -->
+              <span class="link-block">
+                <a href="https://github.com/eliahuhorwitz/Spectral-DeTuning" target="_blank"
+                class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="fab fa-github"></i>
+                </span>
+                <span>Code</span>
+              </a>
+            </span>
+
+            <!-- ArXiv abstract Link -->
+            <span class="link-block">
+              <a href="https://arxiv.org/abs/2402.10208" target="_blank"
+                class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="ai ai-arxiv"></i>
+                </span>
+                <span>arXiv</span>
+              </a>
+            </span>
+
+            <!-- Dataset -->
+              <span class="link-block">
+                  <a href="https://huggingface.co/datasets/Eliahu/LoWRA-Bench" target="_blank"
+                      class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon" style="vertical-align: middle; font-size: 20px;">&#129303;</span>
+                      <span style="vertical-align: middle;">Dataset</span>
+                  </a>
+              </span>    
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- Teaser video-->
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <video poster="" id="tree" autoplay controls muted loop height="90%">
+        <!-- Your video here -->
+        <source src="/spectral_detuning/static/videos/banner_video.mp4"
+        type="video/mp4">
+      </video>
+      <h2 class="subtitle has-text-centered">
+        We uncover a vulnerability in LoRA fine-tuned models wherein an attacker is able to undo the fine-tuning process and recover the weights of the original pre-trained model. 
+        Our method, <em>Spectral DeTuning</em>, can perform the attack in an unsupervised and data-free manner on real models such as Stable Diffusion and Mistral. 
+        For simplicity, we illustrate the attack on a single layer, in reality, the attack is carried out independently on all the fine-tuned layers.
+      </h2>
+    </div>
+  </div>
+</section>
+<!-- End teaser video -->
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p> The dominant paradigm in generative modeling consists of two steps: i) pre-training on a large-scale but unsafe dataset, ii) aligning the pre-trained model with human values via fine-tuning. This practice is considered safe, as no current method can recover the unsafe, <em>pre-fine-tuning</em> model weights. In this paper, we demonstrate that this assumption is often false. Concretely, we present <em>Spectral DeTuning</em>, a method that can recover the weights of the pre-fine-tuning model using a few low-rank (LoRA) fine-tuned models. In contrast to previous attacks that attempt to recover pre-fine-tuning capabilities, our method aims to recover the exact pre-fine-tuning weights. Our approach exploits this new vulnerability against large-scale models such as a personalized Stable Diffusion and an aligned Mistral.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+<section class="section hero is-small">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full">
+        <div class="content">
+          <div class="level-set has-text-justified">
+            <p>
+             In this paper, we identify a vulnerability in fine-tuned models, wherein the pre-fine-tuning (Pre-FT) weights, i.e., the model weights before the fine-tuning stage, can be recovered using a small number of models fine-tuned via low-rank adaptation (LoRA).
+             Generative modeling consists of two steps:
+             <ol>
+              <li>Pre-training on unsafe data.</li>
+              <li>Alignment and safety fine-tuning.</li>
+            </ol>
+            Recovering the original pre-fine-tuning unsafe weights, is implicitly assumed to be impossible. We demonstrate that this safety assumption is often false.
+          </p>
+        </div>
+<img src="/spectral_detuning/static/images/mistral.png" alt="Recovering the Pre-Fine-Tuning Weight of an Aligned Mistral 7B" class="blend-img-background center-image" loading="lazy"/>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container  is-max-desktop">
+      <h2 class="title is-3">Pre-Fine-Tuning Weight Recovery</h2>
+      <div class="level-set has-text-justified">
+        <p>
+          We propose the task of <em>Pre-Fine-Tuning Weight Recovery</em>. In this paper, we tackle this task in cases where multiple LoRA fine-tuned flavors of the same source model are available.
+          To solve this task we present <em>Spectral DeTuning</em>, a method that recovers Pre-FT weights of SoTA models using iterative low-rank matrix factorization
+          </p>
+       <p>
+        Unlike previous attacks on model alignment that attempt to recover Pre-FT capabilities, we aim to recover the exact Pre-FT weights.<br>
+        Moreover, it does not require running inference through the model. This is advantageous as i) it does not require training data ii) it is highly parallelizable, e.g., on a cluster of desktop GPUs such as RTX2080 our method can recover the Pre-FT weights of a Mistral-7B model in under five minutes.
+       </p>
+     </div>
+     <img src="/spectral_detuning/static/images/stable_diffusion.png" alt="Recovering the Pre-Fine-Tuning Weight of an Aligned Mistral 7B" class="blend-img-background center-image" loading="lazy"/>
+          <p><strong>Stable Diffusion Results:</strong> Spectral DeTuning recovers the Pre-Fine-Tuning images with high precision, even when using "in the wild" LoRAs, essentially reversing the personalization fine-tuning of the LoRA model.
+      </div>
+   </div>
+ </div>
+</section>
+
+<section class="section hero is-small">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full">
+        <div class="content">
+          <h2 class="title is-3">Vulnerability of SoTA Models</h2>
+          <div class="level-set has-text-justified">
+            <p>
+              By using just 5 LoRAs taken from CivitAI, we can recover the Pre-FT Stable Diffusion weights with a vanishingly small error. As can be seen below, scaling up to a DPO aligned Mistral only requires 8 LoRAs.
+            </p>
+            <img src="/spectral_detuning/static/images/semantic_conv.png" alt="Number of LoRAs for semantic convergence" class="center-image" loading="lazy"/>
+            <div class="container mt-4">
+              <div class="alert alert-danger" role="alert">
+                <strong>Implications:</strong> SoTA LLMs that use LoRA for alignment fine-tuning are vulnerable to Pre-FT weight recovery attacks
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container  is-max-desktop">
+      <h2 class="title is-3">Spectral DeTuning</h2>
+      <div class="level-set has-text-justified">
+        <p>
+          The core idea of Spectral DeTuning is to iteratively break down the optimization into a set of simple sub-problems which have closed-form solutions. This results in a simple yet powerful algorithm that can be implemented in 8 lines of code.
+       </p>
+       <img src="/spectral_detuning/static/images/algorithm.png" alt="Spectral DeTuning code" class="center-image" loading="lazy"/>
+     </div>
+   </div>
+ </div>
+</section>
+
+<section class="section hero is-small">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full">
+        <div class="content">
+          <h2 class="title is-3">LoWRA Bench</h2>
+          <div class="level-set has-text-justified">
+            <p>
+              To stimulate research into preventing Pre-FT weight leakage and the associated risks in terms of model safety and alignment we present <strong>Lo</strong>RA <strong>W</strong>eight <strong>R</strong>ecovery <strong>A</strong>ttack (LoWRA) Bench, a comprehensive benchmark designed to evaluate Pre-FT weight recovery methods.<br>
+
+              Our dataset encompasses three pre-trained representative source models: a Vision Transformer (ViT) trained on ImageNet-1K, Stable Diffusion 1.5, and Mistral-7B-v0.1. Notably, these models are widely used and deployed in numerous production systems.
+            </p>
+            <img src="/spectral_detuning/static/images/lowra_bench.png" alt="LoWRA Bench Details" class="center-image" loading="lazy"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container  is-max-desktop">
+      <h2 class="title is-3">Broader Impact</h2>
+      <div class="level-set has-text-justified">
+        <p>
+          This work uncovers a significant vulnerability in fine-tuned models, allowing attackers to access pre-fine-tuning weights. While this discovery reveals potential security risks, our primary objective is to advance the field of Machine Learning and raise awareness within the research community about the existing vulnerabilities in current models.
+        </p>
+        <p>
+          Instead of using the findings of this study to execute attacks, we advocate for their use by model creators to enhance the safety and security of their models. By acknowledging and addressing vulnerabilities, creators can proactively safeguard against potential threats.
+        </p>
+        <p>
+          Furthermore, in the discussion section, we outline potential future directions and mitigation strategies. Following established practices in the cyber security community, we emphasize the importance of open discussion and encourage the reporting of vulnerabilities. By fostering transparency and collaboration, we can collectively create a safer environment for deploying machine learning models.
+       </p>
+     </div>
+   </div>
+ </div>
+</section>
+
+<!--BibTex citation -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <div class="bibtex-header">
+      <h2 class="title">BibTeX</h2>
+      <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+        <i class="fas fa-copy"></i>
+        <span class="copy-text">Copy</span>
+      </button>
+    </div>
+    <pre id="bibtex-code"><code>@inproceedings{horwitz2024recovering,
+  title={Recovering the Pre-Fine-Tuning Weights of Generative Models},
+  author={Horwitz, Eliahu and Kahana, Jonathan and Hoshen, Yedid},
+  booktitle={International Conference on Machine Learning},
+  pages={18882--18904},
+  year={2024},
+  organization={PMLR}
+}</code></pre>
+  </div>
+</section>
+<!--End BibTex citation -->
+
+  <footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a> which was adopted from the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+            You are free to borrow the source code of this website, we just ask that you link back to this page in the footer. <br> This website is licensed under a <a rel="license"  href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Statcounter tracking code -->
+
+<!-- Default Statcounter code for Spectral DeTuning
+https://horwitz.ai/spectral_detuning/ -->
+<script type="text/javascript">
+var sc_project=12968013; 
+var sc_invisible=1; 
+var sc_security="c534194a"; 
+</script>
+<script type="text/javascript"
+src="https://www.statcounter.com/counter/counter.js"
+async></script>
+<noscript><div class="statcounter"><a title="Web Analytics
+Made Easy - Statcounter" href="https://statcounter.com/"
+target="_blank"><img class="statcounter"
+src="https://c.statcounter.com/12968013/0/c534194a/1/"
+alt="Web Analytics Made Easy - Statcounter"
+referrerPolicy="no-referrer-when-downgrade"></a></div></noscript>
+<!-- End of Statcounter Code -->
+
+  </main>
+  </body>
+  </html>

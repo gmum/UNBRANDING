@@ -27,10 +27,89 @@ Trade‑off between fidelity and removal. Baseline preserves structure but often
 
 ![Trade‑off](images/fig4.png)
 
-## Reproducibility Checklist
-- Environment: pin model versions; fix seeds for sampling; document prompts.
-- Evaluation: run VLM‑QA scripts with provided templates; report controls.
-- Artifacts: configs and sample prompts for quick verification.
+## Installation
+
+### Prerequisites
+- Python 3.13+
+- CUDA-compatible GPU (for image generation and VLM inference)
+- [uv](https://docs.astral.sh/uv/) package manager
+
+### Setup with uv
+
+1. Clone the repository:
+```bash
+git clone https://github.com/gmum/UNBRANDING.git
+cd UNBRANDING
+```
+
+2. Install dependencies using uv:
+```bash
+uv sync
+```
+
+This will create a virtual environment in `.venv` and install all required packages including:
+- PyTorch 2.8.0 with CUDA support
+- Diffusers 0.35.2 (Stable Diffusion, FLUX models)
+- Transformers 4.57.1 (HuggingFace models)
+- VLLM 0.11.0 (optimized VLM inference)
+- Streamlit 1.51.0 (annotation UI)
+- Ray 2.51.1 (distributed processing)
+
+3. Activate the environment:
+```bash
+source .venv/bin/activate
+```
+
+Or run commands directly with uv:
+```bash
+uv run python <script.py>
+```
+
+## Quick Start
+
+### 1. Generate Images
+
+```bash
+# Using Stable Diffusion XL
+uv run python generate_images.py --model sdxl --prompts configs/vlm_vss.json --output-dir output/sdxl --seed 42
+
+# Using FLUX.1 Schnell (fast variant)
+uv run python generate_images.py --model flux-schnell --prompts configs/vlm_bps.json --output-dir output/flux
+
+# Using Stable Diffusion 3.5 Large
+uv run python generate_images.py --model sd35 --prompts configs/vlm_vss.json --output-dir output/sd35
+```
+
+**Supported Models:**
+- `sd14` - Stable Diffusion v1.4
+- `sdxl` - Stable Diffusion XL
+- `sd35` - Stable Diffusion 3.5 Large
+- `flux-schnell` - FLUX.1 Schnell
+- `flux-dev` - FLUX.1 Dev
+- `qwen-image` - Qwen Image
+- `custom` - Any HuggingFace model (use with `--model-id`)
+
+### 2. Evaluate with VLM-QA
+
+Start VLLM server (in separate terminal):
+```bash
+uv run vllm serve llava-hf/llava-1.5-7b-hf --port 8000
+```
+
+Run VLM evaluation:
+```bash
+uv run python client.py \
+  --gt_imgs_dir data/ground_truth \
+  --gen_imgs_dir output/sdxl \
+  --model-type llava \
+  --output results/evaluation.json
+```
+
+**Supported VLM Types:**
+- `llava` - LLaVA 1.5 7B
+- `nemotron` - NVIDIA Nemotron Nano VL 8B
+- `gemma3` - Google Gemma-3 4B IT
+
 
 ## Citation
 Please cite our work if you find it useful:

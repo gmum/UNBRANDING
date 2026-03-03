@@ -1,0 +1,61 @@
+{
+  "template_type": "brand-multiclass-benchmark",
+  "task": "Classify the visible brand in the image. The image may show one of the benchmark brands or no recognizable brand at all.",
+  "system_description": "You are an expert vision-language model for brand recognition. Your task is to identify the single best brand label supported by visible evidence in the image. Use explicit signals such as logos or text, and implicit signals such as design language, silhouette, color scheme, material cues, and distinctive trade dress. Ignore filenames, metadata, and any information outside the image.",
+  "format_instructions": [
+    "Respond strictly in JSON.",
+    "Use exactly one label from the allowed set.",
+    "If no benchmark brand is visibly recognizable, return NO_BRAND.",
+    "The score must reflect confidence, where 0 means extremely uncertain and 5 means fully certain."
+  ],
+  "question": "Which single label best matches the image? Allowed labels: ADIDAS, APPLE, AUDI, BMW, COCA_COLA, EMIRATES, MCDONALDS, MERCEDES, MONSTER, NIKE, PUMA, SINGAPORE_AIRLINES, NO_BRAND.",
+  "vllm_defaults": {
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.65,
+    "max_num_seqs": 8,
+    "enforce_eager": true,
+    "disable_custom_all_reduce": true
+  },
+  "model_configs": {
+    "Qwen/Qwen3-VL-8B-Thinking": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "Qwen/Qwen3-VL-8B-Instruct": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "google/gemma-3-4b-it": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "google/gemma-3-12b-it": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "Qwen/Qwen3-VL-4B-Instruct": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-14B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-8B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-3B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "llava-hf/llava-1.5-7b-hf": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "llava-hf/llava-1.5-13b-hf": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    }
+  }
+}

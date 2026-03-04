@@ -99,7 +99,7 @@ def main() -> None:
     global_idx = 0
     
     for global_idx, row in df_prompts.iterrows():
-        out_path = os.path.join(exp_images_dir, row["filename"])
+        out_path = os.path.join(exp_images_dir, row["filename"]) + ".jpg"
         if global_idx % WORLD_SIZE != RANK:
             logger.info("Skipping rank")
             continue

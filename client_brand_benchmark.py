@@ -189,6 +189,64 @@ def find_all_images(root_dir: Path) -> list[tuple[Path, str]]:
     return sorted(images, key=lambda x: (x[1], x[0].name))
 
 
+def normalize_token(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+
+
+def infer_brand_from_text(text: str) -> str | None:
+    normalized = f"_{normalize_token(text)}_"
+    aliases = {
+        "adidas": "adidas",
+        "apple": "apple",
+        "audi": "audi",
+        "bmw": "bmw",
+        "coca_cola": "coca-cola",
+        "cocacola": "coca-cola",
+        "emirates": "emirates",
+        "mcdonald": "mcdonald",
+        "mcdonalds": "mcdonald",
+        "mercedes": "mercedes",
+        "monster": "monster",
+        "nike": "nike",
+        "puma": "puma",
+        "singapore_airlines": "singapore_airlines",
+        "singaporeairlines": "singapore_airlines",
+    }
+    for alias, brand in aliases.items():
+        if f"_{alias}_" in normalized:
+            return brand
+    return None
+
+
+def infer_sample_metadata(images_dir: Path, image_path: Path) -> tuple[str, str, str]:
+    rel_parts = image_path.relative_to(images_dir).parts
+    rel_dirs = rel_parts[:-1]
+
+    source_brand = None
+    for part in reversed(rel_dirs):
+        source_brand = infer_brand_from_text(part)
+        if source_brand is not None:
+            break
+    if source_brand is None:
+        source_brand = infer_brand_from_text(image_path.stem)
+    if source_brand is None:
+        source_brand = rel_dirs[-1] if rel_dirs else "root"
+
+    if rel_dirs and normalize_token(rel_dirs[0]) != normalize_token(source_brand):
+        split = rel_dirs[0]
+    else:
+        split = images_dir.name
+
+    if any("no_brand" in normalize_token(part) for part in rel_dirs):
+        expected_label = NO_BRAND_LABEL
+    elif source_brand == "root":
+        expected_label = "UNKNOWN"
+    else:
+        expected_label = BRAND_DIR_TO_LABEL.get(source_brand, source_brand.upper())
+
+    return split, source_brand, expected_label
+
+
 def build_manifest(images_dir: Path) -> list[Sample]:
     """Build manifest from images directory.
     
@@ -204,20 +262,15 @@ def build_manifest(images_dir: Path) -> list[Sample]:
         raise SystemExit(f"No images found in: {images_dir}")
 
     manifest: list[Sample] = []
-    for image_path, source_brand in images:
-        # Try to map source_brand to a label, otherwise use the source_brand as-is
-        if source_brand == "root":
-            expected_label = "UNKNOWN"
-        else:
-            expected_label = BRAND_DIR_TO_LABEL.get(source_brand, source_brand.upper())
-        
-        sample_id = f"{source_brand}:{image_path.name}"
+    for image_path, _ in images:
+        split, source_brand, expected_label = infer_sample_metadata(images_dir, image_path)
+        sample_id = f"{split}:{source_brand}:{image_path.name}"
         manifest.append(
             Sample(
                 sample_id=sample_id,
                 image_path=image_path.resolve(),
                 image_relpath=safe_relpath(image_path.resolve()),
-                split="eval",
+                split=split,
                 source_brand=source_brand,
                 expected_label=expected_label,
                 manifest_index=len(manifest),
@@ -468,9 +521,6 @@ def main() -> None:
             record: dict[str, Any] = {
                 "sample_id": sample.sample_id,
                 "image_path": sample.image_relpath,
-                "split": sample.split,
-                "source_brand": sample.source_brand,
-                "expected_label": sample.expected_label,
                 "model_id": args.model_id,
                 "rank": rank,
             }

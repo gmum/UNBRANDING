@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate brand recognition across eval_yes_brands & eval_no_brands.
+"""Evaluate brand recognition on all images under a data directory.
 
 For every image the script queries a running vLLM server with the
 brand-multiclass-benchmark prompt and writes results to a single CSV.
@@ -7,8 +7,6 @@ brand-multiclass-benchmark prompt and writes results to a single CSV.
 CSV columns
 -----------
 filename        – image path relative to the data root
-gt_label        – 1 if the image comes from eval_yes_brands, 0 otherwise
-brand           – brand subfolder name (ground-truth brand)
 predicted_brand – the label returned by the model
 score           – confidence score (0-5) returned by the model
 raw_response    – raw model output (only when parsing fails)
@@ -38,25 +36,8 @@ from vlm_outputs import BrandMulticlassRecognitionOutput
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
-BRAND_DIR_TO_LABEL: dict[str, str] = {
-    "adidas": "ADIDAS",
-    "apple": "APPLE",
-    "audi": "AUDI",
-    "bmw": "BMW",
-    "coca-cola": "COCA_COLA",
-    "emirates": "EMIRATES",
-    "mcdonald": "MCDONALDS",
-    "mercedes": "MERCEDES",
-    "monster": "MONSTER",
-    "nike": "NIKE",
-    "puma": "PUMA",
-    "singapore_airlines": "SINGAPORE_AIRLINES",
-}
-
 CSV_COLUMNS = [
     "filename",
-    "gt_label",
-    "brand",
     "predicted_brand",
     "score",
     "raw_response",
@@ -71,8 +52,6 @@ CSV_COLUMNS = [
 class Sample:
     image_path: Path
     rel_path: str  # path relative to data root
-    gt_label: int  # 1=yes_brands, 0=no_brands
-    brand: str  # subfolder name
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -81,7 +60,7 @@ class Sample:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Evaluate brand recognition on image dataset.")
     p.add_argument("--model-id", required=True, help="HF model id served by vLLM.")
-    p.add_argument("--data-dir", default="data", help="Root data directory (has eval_yes_brands / eval_no_brands).")
+    p.add_argument("--data-dir", default="data", help="Root directory scanned recursively for images.")
     p.add_argument("--prompts-file", default="configs/vlm_brand_benchmark.json", help="Prompt config JSON.")
     p.add_argument("--output-csv", default=None, help="Path for the output CSV. Auto-generated if omitted.")
     p.add_argument("--results-dir", default="results/eval_brand_benchmark", help="Directory for output CSVs.")
@@ -126,26 +105,17 @@ def distributed_params() -> tuple[int, int]:
 
 
 def discover_samples(data_dir: Path) -> list[Sample]:
-    """Walk eval_yes_brands and eval_no_brands, return sorted sample list."""
+    """Walk the data directory recursively and return all image samples."""
     samples: list[Sample] = []
-    for split_name, gt_label in [("eval_yes_brands", 1), ("eval_no_brands", 0)]:
-        split_dir = data_dir / split_name
-        if not split_dir.is_dir():
-            continue
-        for brand_dir in sorted(split_dir.iterdir()):
-            if not brand_dir.is_dir():
-                continue
-            for img in sorted(brand_dir.rglob("*")):
-                if img.is_file() and img.suffix.lower() in IMAGE_EXTENSIONS:
-                    rel = img.relative_to(data_dir)
-                    samples.append(
-                        Sample(
-                            image_path=img.resolve(),
-                            rel_path=str(rel),
-                            gt_label=gt_label,
-                            brand=brand_dir.name,
-                        )
-                    )
+    for img in sorted(data_dir.rglob("*")):
+        if img.is_file() and img.suffix.lower() in IMAGE_EXTENSIONS:
+            rel = img.relative_to(data_dir)
+            samples.append(
+                Sample(
+                    image_path=img.resolve(),
+                    rel_path=str(rel),
+                )
+            )
     return samples
 
 
@@ -295,8 +265,6 @@ def main() -> None:
 
             row: dict[str, Any] = {
                 "filename": sample.rel_path,
-                "gt_label": sample.gt_label,
-                "brand": BRAND_DIR_TO_LABEL.get(sample.brand, sample.brand.upper()),
                 "predicted_brand": "",
                 "score": "",
                 "raw_response": "",

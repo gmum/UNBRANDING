@@ -18,11 +18,11 @@ if [[ "$#" -ne 3 ]]; then
 fi
 
 MODEL_ID="$1"
-CONFIG_FILE="$2"
+VLM_CONFIG="$2"
 DATA_DIR="$3"
 
-if [[ ! -f "${CONFIG_FILE}" ]]; then
-  echo "Config not found: ${CONFIG_FILE}"
+if [[ ! -f "${VLM_CONFIG}" ]]; then
+  echo "Config not found: ${VLM_CONFIG}"
   exit 1
 fi
 
@@ -31,16 +31,16 @@ if [[ ! -d "${DATA_DIR}" ]]; then
   exit 1
 fi
 
-config_base="$(basename "${CONFIG_FILE}" .json)"
+config_base="$(basename "${VLM_CONFIG}" .json)"
 data_base="$(basename "${DATA_DIR}")"
 
-export CONFIG_FILE
+export VLM_CONFIG
 export DATA_DIR
 export RESULTS_DIR="${RESULTS_DIR:-results/eval_brand_benchmark/${data_base}/${config_base}}"
 
 echo "Submitting:"
 echo "  model_id    ${MODEL_ID}"
-echo "  config      ${CONFIG_FILE}"
+echo "  config      ${VLM_CONFIG}"
 echo "  data_dir    ${DATA_DIR}"
 echo "  results_dir ${RESULTS_DIR}"
 

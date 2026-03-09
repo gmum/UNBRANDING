@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SBATCH_SCRIPT="slurm/eval_brand_benchmark.sbatch"
-CONFIG_FILE="${CONFIG_FILE:-configs/vlm_brand_benchmark.json}"
+VLM_CONFIG="${VLM_CONFIG:-${CONFIG_FILE:-configs/vlm_brand_benchmark.json}}"
 DATA_DIR="${DATA_DIR:-data/eval_halucination}"
 RESULTS_DIR="${RESULTS_DIR:-results/eval_brand_benchmark}"
 BASE_PORT="${BASE_PORT:-8000}"
@@ -22,7 +22,7 @@ for model_id in "$@"; do
   echo "Submitting ${model_id}: gpus=${GPUS_PER_JOB} port=${port}"
   sbatch \
     --gres="gpu:${GPUS_PER_JOB}" \
-    --export=ALL,MODEL_ID="${model_id}",CONFIG_FILE="${CONFIG_FILE}",DATA_DIR="${DATA_DIR}",RESULTS_DIR="${RESULTS_DIR}",PORT="${port}",TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE}" \
+    --export=ALL,MODEL_ID="${model_id}",VLM_CONFIG="${VLM_CONFIG}",DATA_DIR="${DATA_DIR}",RESULTS_DIR="${RESULTS_DIR}",PORT="${port}",TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE}" \
     "${SBATCH_SCRIPT}"
   model_index=$((model_index + 1))
 done

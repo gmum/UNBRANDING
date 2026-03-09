@@ -30,7 +30,7 @@ Trade‑off between fidelity and removal. Baseline preserves structure but often
 ## Installation
 
 ### Prerequisites
-- Python 3.13+
+- Python 3.10
 - CUDA-compatible GPU (for image generation and VLM inference)
 - [uv](https://docs.astral.sh/uv/) package manager
 
@@ -67,48 +67,143 @@ uv run python <script.py>
 
 ## Quick Start
 
-### 1. Generate Images
+### 1. Download Prompt Data from Hugging Face
+
+Dataset (CSV prompts): `MalarzDawid/UNBRANDING`
 
 ```bash
-# Using Stable Diffusion XL
-uv run python generate_images.py --model sdxl --prompts configs/vlm_vss.json --output-dir output/sdxl --seed 42
-
-# Using FLUX.1 Schnell (fast variant)
-uv run python generate_images.py --model flux-schnell --prompts configs/vlm_bps.json --output-dir output/flux
-
-# Using Stable Diffusion 3.5 Large
-uv run python generate_images.py --model sd35 --prompts configs/vlm_vss.json --output-dir output/sd35
+uv run huggingface-cli download MalarzDawid/UNBRANDING \
+  --repo-type dataset \
+  --local-dir data/hf_unbranding \
+  --local-dir-use-symlinks False
 ```
 
-**Supported Models:**
-- `sd14` - Stable Diffusion v1.4
-- `sdxl` - Stable Diffusion XL
-- `sd35` - Stable Diffusion 3.5 Large
-- `flux-schnell` - FLUX.1 Schnell
-- `flux-dev` - FLUX.1 Dev
-- `qwen-image` - Qwen Image
-- `custom` - Any HuggingFace model (use with `--model-id`)
+The main prompt file used below is:
 
-### 2. Evaluate with VLM-QA
-
-Start VLLM server (in separate terminal):
 ```bash
-uv run vllm serve llava-hf/llava-1.5-7b-hf --port 8000
+data/hf_unbranding/train.csv
 ```
 
-Run VLM evaluation:
+### 2. Generate Images
+
+`generate_images.py` expects `--prompts_file` (CSV) and saves outputs under `--output_dir`.
+
 ```bash
-uv run python client.py \
-  --gt_imgs_dir data/ground_truth \
-  --gen_imgs_dir output/sdxl \
-  --model-type llava \
-  --output results/evaluation.json
+# SDXL
+uv run python generate_images.py \
+  --model sdxl \
+  --prompts_file data/hf_unbranding/train.csv \
+  --prompt_set directed biased \
+  --output_dir output/sdxl \
+  --seed 42
+
+# FLUX.1 Schnell
+uv run python generate_images.py \
+  --model flux1-schnell \
+  --prompts_file data/hf_unbranding/train.csv \
+  --prompt_set directed biased \
+  --output_dir output/flux1_schnell \
+  --seed 42
+
+# SD 3.5 Large
+uv run python generate_images.py \
+  --model sd35-large \
+  --prompts_file data/hf_unbranding/train.csv \
+  --prompt_set directed biased \
+  --output_dir output/sd35_large \
+  --seed 42
 ```
 
-**Supported VLM Types:**
-- `llava` - LLaVA 1.5 7B
-- `nemotron` - NVIDIA Nemotron Nano VL 8B
-- `gemma3` - Google Gemma-3 4B IT
+Supported `--model` values:
+- `sd14`
+- `sdxl`
+- `sd35-large`
+- `flux1-schnell`
+- `flux1-dev`
+- `qwen-image`
+
+### 3. Production Run (SLURM: sbatch + shell wrappers)
+
+#### 3.1 Brand classification benchmark (single image mode)
+
+```bash
+bash slurm/submit_eval_brand_for_configs.sh \
+  Qwen/Qwen3-VL-8B-Thinking \
+  configs/vlm_brand_benchmark.json \
+  data/eval_halucination/eval_yes_brands
+```
+
+#### 3.2 Comparison benchmark (data + reference images)
+
+`reference-dir` must contain files with the same names as `data-dir`.
+
+```bash
+VLM_CONFIG=configs/vlm_vss.json \
+DATA_DIR=data/unbrand_images/sdxl-esdx-unbrand \
+REFERENCE_DIR=data/unbrand_images/sdxl-base \
+RESULTS_DIR=results/eval_brand_benchmark/vss/sdxl_base_vs_esdx \
+CLIP_COSINE_THRESHOLD=0.8 \
+bash slurm/submit_eval_brand_benchmark.sh Qwen/Qwen3-VL-8B-Thinking
+```
+
+Optional scaling for bigger models:
+
+```bash
+GPUS_PER_JOB=2 TENSOR_PARALLEL_SIZE=2 \
+bash slurm/submit_eval_brand_benchmark.sh Qwen/Qwen3-VL-8B-Thinking
+```
+
+### 4. Development Run (manual, 2 terminals)
+
+#### Terminal A: start vLLM server
+
+Detection config (`configs/vlm_brand_benchmark.json`, 1 image per request):
+
+```bash
+uv run vllm serve Qwen/Qwen3-VL-8B-Thinking \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --trust-remote-code \
+  --limit-mm-per-prompt '{"image":1}'
+```
+
+Comparison config (`configs/vlm_vss.json`, 2 images per request):
+
+```bash
+uv run vllm serve Qwen/Qwen3-VL-8B-Thinking \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --trust-remote-code \
+  --limit-mm-per-prompt '{"image":2}'
+```
+
+#### Terminal B: run benchmark client
+
+Detection mode:
+
+```bash
+uv run python eval_brand_benchmark.py \
+  --model-id Qwen/Qwen3-VL-8B-Thinking \
+  --data-dir data/eval_halucination/eval_yes_brands \
+  --vlm-config configs/vlm_brand_benchmark.json \
+  --server-url http://127.0.0.1:8000 \
+  --results-dir results/eval_brand_benchmark/dev_detect
+```
+
+Comparison mode:
+
+```bash
+uv run python eval_brand_benchmark.py \
+  --model-id Qwen/Qwen3-VL-8B-Thinking \
+  --data-dir data/unbrand_images/sdxl-esdx-unbrand \
+  --reference-dir data/unbrand_images/sdxl-base \
+  --vlm-config configs/vlm_vss.json \
+  --clip-cosine-threshold 0.8 \
+  --server-url http://127.0.0.1:8000 \
+  --results-dir results/eval_brand_benchmark/dev_vss
+```
+
+Results are saved as JSONL files in `--results-dir` (or in `--output-jsonl` if provided).
 
 
 ## Citation

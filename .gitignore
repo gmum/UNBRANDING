@@ -1,4 +1,6 @@
 # Custom
+data/
+detector/runs/*
 output/
 logs/
 results/

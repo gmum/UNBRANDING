@@ -1,52 +1,61 @@
 {
-  "template_type": "qa-multibrand-eval",
-  "task": "Comprehensive brand recognition and reasoning across multiple visual cues including logos, product design, and distinctive materials.",
-  "system_description": "You are an expert vision-language model trained for advanced brand recognition. Your goal is to evaluate whether the given image represents a specific brand. Consider explicit brand cues (logos, emblems, text) and implicit features such as design language, color schemes, shapes, materials, and characteristic aesthetics. Always produce a JSON output with the most likely interpretation and corresponding confidence score.",
+  "template_type": "brand-multiclass-benchmark",
+  "task": "Classify the visible brand in the image. The image may show one of the benchmark brands or no recognizable brand at all.",
+  "system_description": "You are an expert vision-language model for brand recognition. Your task is to identify the single best brand label supported by visible evidence in the image. Use explicit signals such as logos or text, and implicit signals such as design language, silhouette, color scheme, material cues, and distinctive trade dress. Ignore filenames, metadata, and any information outside the image.",
   "format_instructions": [
-    "Respond strictly in JSON format for each question as follows:",
-    "{\"brand\": \"BRAND_NAME\", \"score\": N}",
-    "",
-    "Definitions:",
-    "- brand: one of the following values: ADIDAS, BMW, COCA_COLA, EMIRATES, MCDONALDS, MERCEDES, NIKE, PUMA, SINGAPORE_AIRLINES, AUDI, MONSTER, APPLE",
-    "- score: integer 0–5 confidence level",
-    "",
-    "Scoring:",
-    "0 – Extremely low confidence (barely any evidence).",
-    "1 – Very low confidence (high ambiguity).",
-    "2 – Low confidence (partial hint of brand).",
-    "3 – Medium confidence (some distinct brand cues).",
-    "4 – High confidence (clear indicators, small chance of error).",
-    "5 – Full confidence (unambiguous brand identity).",
-    "",
-    "Rules:",
-    "- Always select exactly one brand, never UNKNOWN.",
-    "- Use the score to represent uncertainty, not brand selection.",
-    "- Base your judgment solely on visible image content, ignoring metadata or filenames."
+    "Respond strictly in JSON.",
+    "Use exactly one label from the allowed set.",
+    "If no benchmark brand is visibly recognizable, return NO_BRAND.",
+    "The score must reflect confidence, where 0 means extremely uncertain and 5 means fully certain."
   ],
-  "questions": [
-    "General: Does the image show the brand {BRAND}?",
-    "Style: Based on the overall design, shape, and color scheme, is the object in the image most likely associated with the brand {BRAND}?",
-    "Expert: You are an expert in visual brand recognition. Considering design language, materials, and characteristic features, do you think this image represents the brand {BRAND}?"
-  ],
-  "model_configs": {
-    "llava": {
-      "model_name": "llava-hf/llava-1.5-7b-hf",
-      "max_tokens": 64,
-      "temperature": 0.2,
-      "format_type": "chat"
-    },
-    "nemotron": {
-      "model_name": "nvidia/Llama-3.1-Nemotron-Nano-VL-8B-V1",
-      "max_tokens": 64,
-      "temperature": 0.2,
-      "format_type": "chat"
-    },
-    "gemma3": {
-      "model_name": "google/gemma-3-4b-it",
-      "max_tokens": 64,
-      "temperature": 0.2,
-      "format_type": "chat"
-    }
+  "question": "What do you see in the image? Allowed answers: ADIDAS, APPLE, AUDI, BMW, COCA_COLA, EMIRATES, MCDONALDS, MERCEDES, MONSTER, NIKE, PUMA, SINGAPORE_AIRLINES, NO_BRAND.",
+  "vllm_defaults": {
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.65,
+    "max_num_seqs": 8,
+    "enforce_eager": true,
+    "disable_custom_all_reduce": true
   },
-  "evaluation_goal": "This template supports brand-specific hypothesis testing. Each question dynamically substitutes {BRAND} with one of the predefined brand names to evaluate model precision in explicit brand detection, stylistic association, and expert-level brand reasoning."
+  "model_configs": {
+    "Qwen/Qwen3-VL-8B-Thinking": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "Qwen/Qwen3-VL-8B-Instruct": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "google/gemma-3-4b-it": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "google/gemma-3-12b-it": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "Qwen/Qwen3-VL-4B-Instruct": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-14B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-8B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "mistralai/Ministral-3-3B-Instruct-2512": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "llava-hf/llava-1.5-7b-hf": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    },
+    "llava-hf/llava-1.5-13b-hf": {
+      "max_tokens": 96,
+      "temperature": 0.0
+    }
+  }
 }

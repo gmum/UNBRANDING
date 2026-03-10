@@ -32,12 +32,14 @@ def build_messages(
     task: str,
     system_desc: str,
     fmt_instructions: list[str],
-    question: str,
+    question: str | None,
     image_b64_list: list[str],
 ) -> list[dict[str, Any]]:
     instructions = "\n".join(fmt_instructions)
     system_content = f"{system_desc}\n\n{task}\n\n{instructions}"
-    user_content: list[dict[str, Any]] = [{"type": "text", "text": question}]
+    user_content: list[dict[str, Any]] = []
+    if question is not None and question.strip():
+        user_content.append({"type": "text", "text": question})
     for image_b64 in image_b64_list:
         user_content.append(
             {

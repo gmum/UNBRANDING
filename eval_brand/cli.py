@@ -14,12 +14,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--data-dir",
         default="data",
-        help="Directory with input images (top-level only, non-recursive).",
+        help="Directory with input images (recursive scan).",
     )
     p.add_argument(
         "--reference-dir",
         default=None,
-        help="Reference directory with matching filenames. If set, comparison mode is enabled.",
+        help=(
+            "Reference directory with matching relative image paths. "
+            "If set, comparison mode is enabled."
+        ),
     )
     p.add_argument(
         "--vlm-config",

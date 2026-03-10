@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-SBATCH_SCRIPT="slurm/eval_brand_benchmark.sbatch"
+SCRIPT_DIR="$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")")"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+SBATCH_SCRIPT="${REPO_ROOT}/slurm/eval_brand_benchmark.sbatch"
 VLM_CONFIG="${VLM_CONFIG:-${CONFIG_FILE:-configs/vlm_brand_benchmark.json}}"
 DATA_DIR="${DATA_DIR:-data/eval_halucination}"
 RESULTS_DIR="${RESULTS_DIR:-results/eval_brand_benchmark}"
@@ -21,8 +23,9 @@ for model_id in "$@"; do
   port=$((BASE_PORT + model_index * PORT_STRIDE))
   echo "Submitting ${model_id}: gpus=${GPUS_PER_JOB} port=${port}"
   sbatch \
+    --chdir="${REPO_ROOT}" \
     --gres="gpu:${GPUS_PER_JOB}" \
-    --export=ALL,MODEL_ID="${model_id}",VLM_CONFIG="${VLM_CONFIG}",DATA_DIR="${DATA_DIR}",RESULTS_DIR="${RESULTS_DIR}",PORT="${port}",TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE}" \
+    --export=ALL,MODEL_ID="${model_id}",VLM_CONFIG="${VLM_CONFIG}",DATA_DIR="${DATA_DIR}",RESULTS_DIR="${RESULTS_DIR}",PORT="${port}",TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE}",WORKDIR="${REPO_ROOT}" \
     "${SBATCH_SCRIPT}"
   model_index=$((model_index + 1))
 done

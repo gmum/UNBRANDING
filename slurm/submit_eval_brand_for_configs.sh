@@ -20,6 +20,7 @@ fi
 MODEL_ID="$1"
 VLM_CONFIG="$2"
 DATA_DIR="$3"
+SCRIPT_DIR="$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")")"
 
 if [[ ! -f "${VLM_CONFIG}" ]]; then
   echo "Config not found: ${VLM_CONFIG}"
@@ -44,4 +45,4 @@ echo "  config      ${VLM_CONFIG}"
 echo "  data_dir    ${DATA_DIR}"
 echo "  results_dir ${RESULTS_DIR}"
 
-bash slurm/submit_eval_brand_benchmark.sh "${MODEL_ID}"
+bash "${SCRIPT_DIR}/submit_eval_brand_benchmark.sh" "${MODEL_ID}"

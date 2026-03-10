@@ -92,7 +92,7 @@ data/hf_unbranding/train.csv
 # SDXL
 uv run python generate_images.py \
   --model sdxl \
-  --prompts_file data/hf_unbranding/train.csv \
+  --prompts_file data/hf_unbranding/unbranding_v1.csv \
   --prompt_set directed biased \
   --output_dir output/sdxl \
   --seed 42
@@ -100,7 +100,7 @@ uv run python generate_images.py \
 # FLUX.1 Schnell
 uv run python generate_images.py \
   --model flux1-schnell \
-  --prompts_file data/hf_unbranding/train.csv \
+  --prompts_file data/hf_unbranding/unbranding_v1.csv \
   --prompt_set directed biased \
   --output_dir output/flux1_schnell \
   --seed 42
@@ -108,7 +108,7 @@ uv run python generate_images.py \
 # SD 3.5 Large
 uv run python generate_images.py \
   --model sd35-large \
-  --prompts_file data/hf_unbranding/train.csv \
+  --prompts_file data/hf_unbranding/unbranding_v1.csv \
   --prompt_set directed biased \
   --output_dir output/sd35_large \
   --seed 42
@@ -122,38 +122,59 @@ Supported `--model` values:
 - `flux1-dev`
 - `qwen-image`
 
-### 3. Production Run (SLURM: sbatch + shell wrappers)
+### 3. Benchmark (SLURM: sbatch + shell wrappers)
 
-#### 3.1 Brand classification benchmark (single image mode)
+We provide an example directory generated with the EraseAnything method ([Download](https://drive.google.com/file/d/1qL9McjRS1GeQNIW5v9dKHm8_hm0A4JT9/view?usp=sharing)). You can download it and run our benchmark directly. If you want to evaluate a different method, please follow these rules:
+1. Generate base images in the same environment where you run the UNBRANDING/unlearning method.
+2. Use a directory structure matching our example.
+3. Move the generated data to this repository and run the benchmark.
+
+We use fixed seeds, but we cannot guarantee identical results across methods and environments. We aim to provide fair settings, but exact reproducibility is still challenging.
+
+Examples below assume a 2xGPU setup per SLURM job (`GPUS_PER_JOB=2`, `TENSOR_PARALLEL_SIZE=2`).
+
+#### 3.1 Brand Detection Score benchmark (single image mode)
 
 ```bash
+GPUS_PER_JOB=2 TENSOR_PARALLEL_SIZE=2 \
+RESULTS_DIR=results/example/bps \
 bash slurm/submit_eval_brand_for_configs.sh \
   Qwen/Qwen3-VL-8B-Thinking \
-  configs/vlm_brand_benchmark.json \
-  data/eval_halucination/eval_yes_brands
+  configs/vlm_bps.json \
+  data/example
 ```
 
 #### 3.2 Comparison benchmark (data + reference images)
 
-`reference-dir` must contain files with the same names as `data-dir`.
+`reference-dir` must contain files with matching relative paths (including subfolders) from `data-dir`.
 
 ```bash
 VLM_CONFIG=configs/vlm_vss.json \
-DATA_DIR=data/unbrand_images/sdxl-esdx-unbrand \
-REFERENCE_DIR=data/unbrand_images/sdxl-base \
-RESULTS_DIR=results/eval_brand_benchmark/vss/sdxl_base_vs_esdx \
+DATA_DIR=data/example/fluxdev-eraseanything-unbrand \
+REFERENCE_DIR=data/example/fluxdev-eraseanything-base \
+RESULTS_DIR=results/example/vss \
 CLIP_COSINE_THRESHOLD=0.8 \
+GPUS_PER_JOB=2 \
+TENSOR_PARALLEL_SIZE=2 \
 bash slurm/submit_eval_brand_benchmark.sh Qwen/Qwen3-VL-8B-Thinking
 ```
 
-Optional scaling for bigger models:
+If you want to run on a single GPU instead, set:
 
 ```bash
-GPUS_PER_JOB=2 TENSOR_PARALLEL_SIZE=2 \
+GPUS_PER_JOB=1 TENSOR_PARALLEL_SIZE=1 \
 bash slurm/submit_eval_brand_benchmark.sh Qwen/Qwen3-VL-8B-Thinking
 ```
 
+Output paths (SLURM mode):
+- Benchmark results (JSONL): `${RESULTS_DIR}` (e.g. `results/example/bps` or `results/example/vss`)
+- SLURM stdout: `logs/eval_brand_benchmark_<JOB_ID>.out`
+- SLURM stderr: `logs/eval_brand_benchmark_<JOB_ID>.err`
+- vLLM server log: `logs/vllm_eval_brand_<MODEL_ID_SAFE>.log`
+
 ### 4. Development Run (manual, 2 terminals)
+
+For 2xGPU local runs, expose two devices (for example `CUDA_VISIBLE_DEVICES=0,1`).
 
 #### Terminal A: start vLLM server
 
@@ -164,6 +185,7 @@ uv run vllm serve Qwen/Qwen3-VL-8B-Thinking \
   --host 0.0.0.0 \
   --port 8000 \
   --trust-remote-code \
+  --tensor-parallel-size 2 \
   --limit-mm-per-prompt '{"image":1}'
 ```
 
@@ -174,6 +196,7 @@ uv run vllm serve Qwen/Qwen3-VL-8B-Thinking \
   --host 0.0.0.0 \
   --port 8000 \
   --trust-remote-code \
+  --tensor-parallel-size 2 \
   --limit-mm-per-prompt '{"image":2}'
 ```
 
@@ -184,10 +207,10 @@ Detection mode:
 ```bash
 uv run python eval_brand_benchmark.py \
   --model-id Qwen/Qwen3-VL-8B-Thinking \
-  --data-dir data/eval_halucination/eval_yes_brands \
-  --vlm-config configs/vlm_brand_benchmark.json \
+  --data-dir data/example \
+  --vlm-config configs/vlm_bps.json \
   --server-url http://127.0.0.1:8000 \
-  --results-dir results/eval_brand_benchmark/dev_detect
+  --results-dir results/example
 ```
 
 Comparison mode:
@@ -195,12 +218,12 @@ Comparison mode:
 ```bash
 uv run python eval_brand_benchmark.py \
   --model-id Qwen/Qwen3-VL-8B-Thinking \
-  --data-dir data/unbrand_images/sdxl-esdx-unbrand \
-  --reference-dir data/unbrand_images/sdxl-base \
+  --data-dir data/example/fluxdev-eraseanything-unbrand \
+  --reference-dir data/example/fluxdev-eraseanything-base \
   --vlm-config configs/vlm_vss.json \
   --clip-cosine-threshold 0.8 \
   --server-url http://127.0.0.1:8000 \
-  --results-dir results/eval_brand_benchmark/dev_vss
+  --results-dir results/example
 ```
 
 Results are saved as JSONL files in `--results-dir` (or in `--output-jsonl` if provided).

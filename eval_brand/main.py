@@ -5,9 +5,10 @@ from pathlib import Path
 
 from .cli import parse_args, sanitize
 from .data_io import load_samples_for_template
-from .pipeline import run_evaluation, write_results_jsonl
+from .pipeline import run_evaluation
 from .prompting import resolve_format_instructions
 from .runtime import distributed_params, setup_logging
+from .types import EvaluationResult, Sample
 
 
 def main() -> None:
@@ -21,9 +22,10 @@ def main() -> None:
     if model_cfg is None:
         raise SystemExit(f"Model '{args.model_id}' not found in {args.vlm_config}")
 
-    question = prompts.get("question")
-    if not isinstance(question, str):
-        raise SystemExit("'question' must be a string in --vlm-config.")
+    question_raw = prompts.get("question")
+    if question_raw is not None and not isinstance(question_raw, str):
+        raise SystemExit("'question' must be a string if provided in --vlm-config.")
+    question = question_raw
 
     format_instructions = resolve_format_instructions(prompts)
 
@@ -52,33 +54,53 @@ def main() -> None:
         jsonl_path = results_dir / f"eval_{model_tag}_rank{rank}.jsonl"
 
     url = f"{args.server_url.rstrip('/')}/v1/chat/completions"
+    written_rel_paths: set[str] = set()
 
-    results_by_rel_path = run_evaluation(
-        samples=my_samples,
-        is_comparison=is_comparison,
-        clip_model_id=args.clip_model_id,
-        clip_cosine_threshold=args.clip_cosine_threshold,
-        clip_batch_size=args.clip_batch_size,
-        prompts=prompts,
-        format_instructions=format_instructions,
-        question=question,
-        model_id=args.model_id,
-        model_cfg=model_cfg,
-        url=url,
-        seed=args.seed,
-        request_timeout=args.request_timeout,
-        retry_wait=args.retry_wait,
-        max_retries=args.max_retries,
-        vlm_max_workers=args.vlm_max_workers,
-        logger=logger,
-    )
+    with open(jsonl_path, "a", encoding="utf-8") as jsonl_handle:
 
-    write_results_jsonl(
-        jsonl_path=jsonl_path,
-        samples=my_samples,
-        results_by_rel_path=results_by_rel_path,
-        logger=logger,
-    )
+        def append_result(sample: Sample, result: EvaluationResult) -> None:
+            if sample.rel_path in written_rel_paths:
+                return
+            if result.error:
+                logger.error("Failed %s: %s", sample.rel_path, result.error)
+            jsonl_handle.write(json.dumps(result.to_row(sample), ensure_ascii=False) + "\n")
+            jsonl_handle.flush()
+            written_rel_paths.add(sample.rel_path)
+
+        results_by_rel_path = run_evaluation(
+            samples=my_samples,
+            is_comparison=is_comparison,
+            clip_model_id=args.clip_model_id,
+            clip_cosine_threshold=args.clip_cosine_threshold,
+            clip_batch_size=args.clip_batch_size,
+            prompts=prompts,
+            format_instructions=format_instructions,
+            question=question,
+            model_id=args.model_id,
+            model_cfg=model_cfg,
+            url=url,
+            seed=args.seed,
+            request_timeout=args.request_timeout,
+            retry_wait=args.retry_wait,
+            max_retries=args.max_retries,
+            vlm_max_workers=args.vlm_max_workers,
+            logger=logger,
+            on_result=append_result,
+        )
+
+        missing_count = 0
+        for sample in my_samples:
+            if sample.rel_path in written_rel_paths:
+                continue
+            result = results_by_rel_path.get(sample.rel_path)
+            if result is None:
+                result = EvaluationResult(
+                    error=f"Missing evaluation result for {sample.rel_path}"
+                )
+            append_result(sample, result)
+            missing_count += 1
+        if missing_count:
+            logger.warning("Backfilled %d missing results at the end.", missing_count)
 
     logger.info("Finished. Results written to %s", jsonl_path)
     if world_size == 1:

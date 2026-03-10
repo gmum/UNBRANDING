@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import aiohttp
 
@@ -29,7 +29,7 @@ async def run_vlm_jobs_async(
     template_type: str,
     prompts: dict[str, Any],
     format_instructions: list[str],
-    question: str,
+    question: str | None,
     model_id: str,
     model_cfg: dict[str, Any],
     url: str,
@@ -42,13 +42,14 @@ async def run_vlm_jobs_async(
     done_start: int,
     total: int,
     logger: logging.Logger,
+    on_result: Callable[[Sample, EvaluationResult], None] | None = None,
 ) -> dict[str, EvaluationResult]:
     semaphore = asyncio.Semaphore(max(1, vlm_max_workers))
     connector = aiohttp.TCPConnector(limit=0)
 
     async with aiohttp.ClientSession(connector=connector) as session:
 
-        async def run_one(sample: Sample) -> tuple[str, EvaluationResult]:
+        async def run_one(sample: Sample) -> tuple[Sample, EvaluationResult]:
             rel_path = sample.rel_path
             base_result = base_results[rel_path]
             try:
@@ -71,14 +72,17 @@ async def run_vlm_jobs_async(
             except Exception as exc:
                 vlm_result = EvaluationResult(error=str(exc))
             merge_evaluation_results(base_result, vlm_result)
-            return rel_path, base_result
+            return sample, base_result
 
         tasks = [asyncio.create_task(run_one(sample)) for sample in samples]
         done = done_start
         completed: dict[str, EvaluationResult] = {}
         for task in asyncio.as_completed(tasks):
-            rel_path, merged_result = await task
+            sample, merged_result = await task
+            rel_path = sample.rel_path
             completed[rel_path] = merged_result
+            if on_result is not None:
+                on_result(sample, merged_result)
             done += 1
             if done % 50 == 0:
                 logger.info("Progress: %d / %d", done, total)
@@ -94,7 +98,7 @@ def run_evaluation(
     clip_batch_size: int,
     prompts: dict[str, Any],
     format_instructions: list[str],
-    question: str,
+    question: str | None,
     model_id: str,
     model_cfg: dict[str, Any],
     url: str,
@@ -104,6 +108,7 @@ def run_evaluation(
     max_retries: int,
     vlm_max_workers: int,
     logger: logging.Logger,
+    on_result: Callable[[Sample, EvaluationResult], None] | None = None,
 ) -> dict[str, EvaluationResult]:
     clip_cosine_map: dict[str, float] = {}
 
@@ -142,6 +147,8 @@ def run_evaluation(
         if should_query_vlm:
             samples_for_vlm.append(sample)
         else:
+            if on_result is not None:
+                on_result(sample, base_result)
             done += 1
             if done % 50 == 0:
                 logger.info("Progress: %d / %d", done, len(samples))
@@ -171,6 +178,7 @@ def run_evaluation(
                 done_start=done,
                 total=len(samples),
                 logger=logger,
+                on_result=on_result,
             )
         )
         results_by_rel_path.update(completed)

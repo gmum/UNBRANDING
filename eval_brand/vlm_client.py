@@ -121,7 +121,7 @@ async def call_vlm_api(
     template_type: str,
     prompts: dict[str, Any],
     format_instructions: list[str],
-    question: str,
+    question: str | None,
     model_id: str,
     model_cfg: dict[str, Any],
     url: str,

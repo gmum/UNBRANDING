@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -66,6 +67,19 @@ def save_config(path, config):
         json.dump(config, f, indent=4)
 
 
+def build_experiment_name(model: str, seed: int, prompts_file: str) -> str:
+    prompts_stem = Path(prompts_file).stem
+    prompts_slug = re.sub(r"[^a-zA-Z0-9._-]", "-", prompts_stem)
+    return f"model-{model}_seed-{seed}_prompts_file-{prompts_slug}"
+
+
+def build_output_filename(raw_filename: str) -> str:
+    filename = Path(str(raw_filename)).name
+    if not Path(filename).suffix:
+        filename = f"{filename}.jpg"
+    return filename
+
+
 def main() -> None:
     RANK = int(os.environ.get("RANK", "0"))
     WORLD_SIZE = int(os.environ.get("WORLD_SIZE", "1"))
@@ -87,8 +101,8 @@ def main() -> None:
         "seed": args.seed,
     }
 
-    exp_name = "_".join(
-        f"{key}-{exp_params[key]}" for key in ["model", "seed", "prompts_file"]
+    exp_name = build_experiment_name(
+        model=args.model, seed=args.seed, prompts_file=args.prompts_file
     )
 
     exp_dir = os.path.join(args.output_dir, exp_name)
@@ -99,7 +113,9 @@ def main() -> None:
     global_idx = 0
     
     for global_idx, row in df_prompts.iterrows():
-        out_path = os.path.join(exp_images_dir, row["filename"])
+        output_filename = build_output_filename(row["filename"])
+        out_path = os.path.join(exp_images_dir, output_filename)
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         if global_idx % WORLD_SIZE != RANK:
             logger.info("Skipping rank")
             continue

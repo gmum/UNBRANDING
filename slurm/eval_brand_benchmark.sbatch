@@ -4,8 +4,8 @@
 #SBATCH --cpus-per-gpu=4
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
-#SBATCH --qos=big
-#SBATCH --partition=dgxh100
+#SBATCH --qos=batch
+#SBATCH --partition=rtx4090_batch
 #SBATCH --output=logs/eval_brand_benchmark_%A.out
 #SBATCH --error=logs/eval_brand_benchmark_%A.err
 
@@ -17,8 +17,12 @@ else
   echo "module command not available; skipping 'module load CUDA'"
 fi
 
-SBATCH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "${SBATCH_DIR}/.." && pwd)"
+if [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+  REPO_ROOT="${SLURM_SUBMIT_DIR}"
+else
+  SBATCH_DIR="$(realpath -- "$(dirname -- "${BASH_SOURCE[0]}")")"
+  REPO_ROOT="$(cd -- "${SBATCH_DIR}/.." && pwd)"
+fi
 
 # Required
 MODEL_ID="${MODEL_ID:-}"

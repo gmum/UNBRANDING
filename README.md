@@ -228,6 +228,43 @@ uv run python eval_brand_benchmark.py \
 
 Results are saved as JSONL files in `--results-dir` (or in `--output-jsonl` if provided).
 
+### 5. Compute Aggregate Metrics (B/S/U)
+
+After running both benchmarks (BPS and VSS), compute aggregate UNBRANDING metrics with:
+
+```bash
+uv run python metrics.py \
+  --bps results/example/bps \
+  --vss results/example/vss
+```
+
+You can also pass a single JSONL file instead of a directory. If a directory is provided, `metrics.py` uses the first `eval_*.jsonl` file.
+
+Optional weighting:
+
+```bash
+uv run python metrics.py \
+  --bps results/my_run/bps \
+  --vss results/my_run/vss \
+  --alpha 0.7 \
+  --beta 0.3
+```
+
+Definitions:
+- `B`: Brand Detection Score on `unbrand` samples from BPS (`predicted_brand` vs expected brand from filename prefix).
+- `S`: normalized visual similarity score from VSS (mean `similarity_score / 10.0`).
+- `U`: final unbranding score, `U = alpha * S + beta * (1 - B)`.
+
+Default weights are `alpha=0.5` and `beta=0.5`.
+
+Example output:
+
+```text
+B=0.594088 (59.41%)
+S=0.705984 (70.60%)
+U=0.555948 (55.59%)
+```
+
 
 ## Citation
 Please cite our work if you find it useful:

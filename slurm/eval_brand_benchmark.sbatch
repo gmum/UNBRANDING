@@ -34,6 +34,7 @@ VLM_CONFIG="${VLM_CONFIG:-${CONFIG_FILE:-configs/vlm_brand_benchmark.json}}"
 DATA_DIR="${DATA_DIR:-data/eval_halucination}"
 REFERENCE_DIR="${REFERENCE_DIR:-}"
 RESULTS_DIR="${RESULTS_DIR:-results/eval_brand_benchmark}"
+OUTPUT_JSONL="${OUTPUT_JSONL:-}"
 PORT="${PORT:-8000}"
 HOST="${HOST:-127.0.0.1}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-1}"
@@ -116,6 +117,9 @@ echo "data_dir              ${DATA_DIR}"
 echo "reference_dir         ${REFERENCE_DIR:-<none>}"
 echo "vlm_config            ${VLM_CONFIG}"
 echo "results_dir           ${RESULTS_DIR}"
+if [[ -n "${OUTPUT_JSONL}" ]]; then
+  echo "output_jsonl          ${OUTPUT_JSONL}"
+fi
 echo "port                  ${PORT}"
 echo "tensor_parallel_size  ${TENSOR_PARALLEL_SIZE}"
 echo "max_model_len         ${MAX_MODEL_LEN}"
@@ -200,6 +204,9 @@ if [[ -n "${CLIP_MODEL_ID}" ]]; then
 fi
 if [[ -n "${MAX_SAMPLES}" ]]; then
   EVAL_ARGS+=(--max-samples "${MAX_SAMPLES}")
+fi
+if [[ -n "${OUTPUT_JSONL}" ]]; then
+  EVAL_ARGS+=(--output-jsonl "${OUTPUT_JSONL}")
 fi
 
 echo "Running eval_brand_benchmark.py"

@@ -1,0 +1,72 @@
+services:
+  vllm-server:
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-latest}
+    container_name: vllm-server
+    environment:
+      - NVIDIA_DISABLE_REQUIRE=true
+      - HF_HUB_ENABLE_HF_TRANSFER=1
+      # Explicitly set HF_HOME inside the container
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      # Mount the HuggingFace cache directory from the host to avoid re-downloading model weights
+      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/root/.cache/huggingface
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-all}
+              capabilities: [gpu]
+    # Robust healthcheck using python3 urllib first (guaranteed in Python environments),
+    # falling back to curl if python script fails.
+    healthcheck:
+      test: >
+        python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models')" || 
+        curl -f http://localhost:8000/v1/models
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    command: >
+      ${MODEL_ID:-Qwen/Qwen3-VL-8B-Thinking}
+      --host 0.0.0.0
+      --port 8000
+      --trust-remote-code
+      --limit-mm-per-prompt '${LIMIT_MM_PER_PROMPT:-{"image":2}}'
+      --max-model-len ${MAX_MODEL_LEN:-8192}
+
+  eval-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.eval
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: eval-runner
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+    environment:
+      # Use the docker service name for standard bridge network communication
+      - SERVER_URL=http://vllm-server:8000
+      - MODEL_ID=${MODEL_ID:-Qwen/Qwen3-VL-8B-Thinking}
+      - DATA_DIR=${DATA_DIR:-data/example/fluxdev-eraseanything-unbrand}
+      - REFERENCE_DIR=${REFERENCE_DIR:-data/example/fluxdev-eraseanything-base}
+      - RESULTS_DIR=${RESULTS_DIR:-results/example}
+    volumes:
+      - .:/workspace
+      # Share HF cache with runner (needed for CLIP/YOLO model downloads)
+      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/home/developer/.cache/huggingface
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-all}
+              capabilities: [gpu]
+    entrypoint: ["/workspace/scripts/pipeline_entrypoint.sh"]
+

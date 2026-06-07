@@ -1,0 +1,63 @@
+# ==============================================================================
+# Dockerfile.eval
+# Benchmark-safe, multi-stage optimized Dockerfile for the UNBRANDING evaluation pipeline.
+# ==============================================================================
+
+# Allow specifying a custom base image (e.g. for different CUDA or PyTorch versions)
+ARG BASE_IMAGE=pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+FROM ${BASE_IMAGE}
+
+# Define configuration build arguments for non-root user matching the host UID/GID
+ARG UID=1000
+ARG GID=1000
+
+# Set environment variables for non-interactive installs, python performance, and uv behavior
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    # UV cache optimization and compilation settings
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    # Put virtual environment outside workspace to prevent host mounts overriding it
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:/home/developer/.local/bin:${PATH}"
+
+# Install uv by copying it from the official build image (much faster and safer than curl install)
+COPY --from=ghcr.io/astral-sh/uv:0.5.8 /uv /uvx /bin/
+
+# Install system dependencies with cache mount for apt to speed up rebuilds
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /workspace
+
+# Create developer user matching host UID/GID to prevent file permission issues on host mounts
+RUN groupadd --gid $GID developer \
+    && useradd --uid $UID --gid $GID --create-home --shell /bin/bash developer \
+    && mkdir -p /opt/venv \
+    && chown -R developer:developer /opt/venv /workspace
+
+# Switch to the non-root user
+USER developer
+
+# Copy Python package specifications first to leverage Docker layer caching
+COPY --chown=developer:developer pyproject.toml uv.lock README.md ./
+
+# Sync dependencies using cache mount for uv
+RUN --mount=type=cache,target=/home/developer/.cache/uv,uid=$UID,gid=$GID,sharing=locked \
+    uv sync --frozen --no-install-project
+
+# Copy the remaining project source files to ensure self-contained production runs
+COPY --chown=developer:developer . .
+
+# Default command to run
+CMD ["python", "eval_brand_benchmark.py"]
+

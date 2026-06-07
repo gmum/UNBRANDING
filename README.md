@@ -65,6 +65,34 @@ Or run commands directly with uv:
 uv run python <script.py>
 ```
 
+## Docker Setup (Alternative & Recommended)
+
+For a fully containerized, reproducible run that manages both the vLLM server, the evaluation runner, and metrics computation automatically, you can use **Docker Compose**.
+
+### 1. Initial Setup
+
+Copy the environment variables template to `.env` and adjust the configuration as needed (e.g., set `GPU_COUNT`, `MODEL_ID`, or customize path names):
+
+```bash
+cp .env.example .env
+```
+
+> [!IMPORTANT]
+> If you previously ran docker scripts as root, fix host folder ownership so the non-root container user can write logs and results:
+> ```bash
+> sudo chown -R $USER:$USER logs results .venv
+> ```
+
+### 2. Run the Pipeline
+
+Simply run the following command to build the runner, spin up the vLLM server, execute the evaluation pipeline, and output the final B/S/U metrics:
+
+```bash
+docker compose up --build
+```
+
+The output results will be stored in your host's `results/` folder, and runtime logs will be under `logs/`. All auxiliary helper shell scripts are located in the [scripts/](file:///home/ml/Documents/Projects/UNBRANDING/scripts) folder.
+
 ## Quick Start
 
 ### 1. Download Prompt Data from Hugging Face
